@@ -4197,12 +4197,10 @@ class GPUModelRunner(
 
             if not num_scheduled_tokens:
                 if self.parallel_config.data_parallel_size > 1:
-                    # this is a corner case when both external launcher
-                    # and DP are enabled, num_scheduled_tokens could be
-                    # 0, and has_unfinished_requests in the outer loop
-                    # returns True. before returning early here we call
-                    # dummy run to ensure coordinate_batch_across_dp
-                    # is called into to avoid out of sync issues.
+                    # Zero-token DP rank: run dummy so EP collectives stay in
+                    # lockstep with ranks that have tokens. Latch is informational
+                    # only — execute_dummy_batch must still run _dummy_run(1) if
+                    # called later without a paired clear (stale latch hang).
                     self._dummy_run(1)
                     self._dp_zero_token_dummy_ran = True
                 if not has_kv_transfer_group():
