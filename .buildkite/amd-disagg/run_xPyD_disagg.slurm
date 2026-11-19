@@ -20,6 +20,9 @@ GPUS_PER_NODE="${GPUS_PER_NODE:-8}"
 
 SHARED_MOUNT="${SHARED_MOUNT:-/data}"
 LOG_ROOT="${LOG_ROOT:-/data/${USER:-$(id -un)}/disagg_logs}"
+# The containers' HOME (/workspace). Docker creates a missing bind-mount source as
+# root, and the containers run as this user, so make it first.
+mkdir -p "${SHARED_MOUNT}/$(id -un)"
 RUN_AFTER_HEALTH="${RUN_AFTER_HEALTH:-accuracy}"   # bench | accuracy
 DRY_RUN="${DRY_RUN:-0}"
 MORIIO_READ_MODE="${MORIIO_READ_MODE:-0}"   # 0 -> prefill writes (default); 1 -> decode reads KV (read_mode)
@@ -66,7 +69,6 @@ echo "$DISAGG_SCRIPTS_DIR"
 # In-container path the scripts are mounted to (and sourced from).
 CONTAINER_SCRIPTS="${CONTAINER_SCRIPTS:-/vllm-workspace/.buildkite/amd-disagg}"
 CLUSTER_ENV_IN="${CLUSTER_ENV_IN:-${CONTAINER_SCRIPTS}/cluster.sh}"
-
 
 # Health endpoints (TP-mode ports from cluster.sh defaults).
 PREFILL_PORT="${PREFILL_PORT:-8100}"
@@ -495,7 +497,7 @@ run_node_container() {
                 --user "$(id -u):$(id -g)" \
                 -v "$LOG_PATH":/run_logs \
                 -v "$SHARED_MOUNT":"$SHARED_MOUNT" \
-                -v "/data/$(id -un):/workspace" \
+                -v "${SHARED_MOUNT}/$(id -un):/workspace" \
                 -e HOME=/workspace \
                 -e USER="$(id -un)" \
                 -e LOGNAME="$(id -un)" \
@@ -522,7 +524,7 @@ run_node_container() {
         --ulimit nofile=1048576:1048576 \
         -v "$SHARED_MOUNT":"$SHARED_MOUNT" \
         -v "$DISAGG_SCRIPTS_DIR":"$CONTAINER_SCRIPTS" \
-        -v "/data/$(id -un):/workspace" \
+        -v "${SHARED_MOUNT}/$(id -un):/workspace" \
         "${IONIC_MOUNTS[@]}" \
         --ulimit memlock=-1:-1 \
         -e HF_TOKEN \

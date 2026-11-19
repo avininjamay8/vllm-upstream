@@ -289,6 +289,8 @@ PY
 
 # Read model-specific flags from models.yaml (mode + role aware) into globals:
 #   MODEL_BASE_FLAGS / MODEL_ROLE_FLAGS / MODEL_EXPERIMENTAL_FLAGS -> MODEL_CONFIG
+# CLUSTER_SERVE_FLAGS (from the cluster env) is appended after them, so it
+# overrides models.yaml.
 # Also exports the model's env: block (only if not already set; caller env wins).
 load_model_flags() {
     [[ -f "${MODELS_YAML}" ]] || die "models.yaml not found: ${MODELS_YAML}"
@@ -324,7 +326,7 @@ for k, v in env.items():
         print(f"export {k}={q(v)}")
 PY
 )"
-    MODEL_CONFIG="${MODEL_BASE_FLAGS} ${MODEL_ROLE_FLAGS} ${MODEL_EXPERIMENTAL_FLAGS}"
+    MODEL_CONFIG="${MODEL_BASE_FLAGS} ${MODEL_ROLE_FLAGS} ${MODEL_EXPERIMENTAL_FLAGS} ${CLUSTER_SERVE_FLAGS:-}"
 }
 
 # Build the TP-mode (WIDE_EP_MODE=0) serve command into the global CMD array.
