@@ -20,9 +20,10 @@ GPUS_PER_NODE="${GPUS_PER_NODE:-8}"
 
 SHARED_MOUNT="${SHARED_MOUNT:-/data}"
 LOG_ROOT="${LOG_ROOT:-/data/${USER:-$(id -un)}/disagg_logs}"
-# The containers' HOME (/workspace). Docker creates a missing bind-mount source as
-# root, and the containers run as this user, so make it first.
-mkdir -p "${SHARED_MOUNT}/$(id -un)"
+# Host dir mounted as the containers' HOME (/workspace). Docker creates a missing
+# bind-mount source as root, and the containers run as this user, so make it first.
+WORKSPACE_DIR="${WORKSPACE_DIR:-${SHARED_MOUNT}/$(id -un)}"
+mkdir -p "$WORKSPACE_DIR"
 RUN_AFTER_HEALTH="${RUN_AFTER_HEALTH:-accuracy}"   # bench | accuracy
 DRY_RUN="${DRY_RUN:-0}"
 MORIIO_READ_MODE="${MORIIO_READ_MODE:-0}"   # 0 -> prefill writes (default); 1 -> decode reads KV (read_mode)
@@ -241,7 +242,7 @@ echo "[disagg-pd] LOG_PATH=$LOG_PATH"
 export IPADDRS
 
 export WIDE_EP_MODE xP yD GPUS_PER_NODE RUN_AFTER_HEALTH HEALTH_TIMEOUT_S DRY_RUN MORIIO_READ_MODE KV_CONNECTOR
-export IMAGE SHARED_MOUNT CONTAINER_SCRIPTS DISAGG_SCRIPTS_DIR
+export IMAGE SHARED_MOUNT WORKSPACE_DIR CONTAINER_SCRIPTS DISAGG_SCRIPTS_DIR
 export CLUSTER_ENV="${CLUSTER_ENV_IN}"
 export DOCKER_CONT_NAME="vllm_disagg_${MODEL_NAME:-model}_${SLURM_JOB_ID}"
 
@@ -497,7 +498,7 @@ run_node_container() {
                 --user "$(id -u):$(id -g)" \
                 -v "$LOG_PATH":/run_logs \
                 -v "$SHARED_MOUNT":"$SHARED_MOUNT" \
-                -v "${SHARED_MOUNT}/$(id -un):/workspace" \
+                -v "$WORKSPACE_DIR":/workspace \
                 -e HOME=/workspace \
                 -e USER="$(id -un)" \
                 -e LOGNAME="$(id -un)" \
@@ -524,7 +525,7 @@ run_node_container() {
         --ulimit nofile=1048576:1048576 \
         -v "$SHARED_MOUNT":"$SHARED_MOUNT" \
         -v "$DISAGG_SCRIPTS_DIR":"$CONTAINER_SCRIPTS" \
-        -v "${SHARED_MOUNT}/$(id -un):/workspace" \
+        -v "$WORKSPACE_DIR":/workspace \
         "${IONIC_MOUNTS[@]}" \
         --ulimit memlock=-1:-1 \
         -e HF_TOKEN \

@@ -15,15 +15,10 @@ export RUN_AFTER_HEALTH=accuracy
 export ROUTER_TYPE=vllm-router
 export CLUSTER_ENV_IN=/vllm-workspace/.buildkite/amd-disagg/cluster_crs.sh
 export SKIP_IONIC_MOUNTS=1
-
-WORKSPACE_DIR=/shared_nfs/$USER/qa-workspace
-mkdir -p "$WORKSPACE_DIR"
-JOB_SCRIPT=$(mktemp /tmp/run_xPyD_disagg-XXXXXX.slurm)
-sed "s|/data/\$(id -un):/workspace|$WORKSPACE_DIR:/workspace|" run_xPyD_disagg.slurm > "$JOB_SCRIPT"
+export WORKSPACE_DIR=/shared_nfs/$USER/qa-workspace
 
 sbatch --account=amd-aifw-di --partition=amd-aig-sw-shared --qos=amd-aifw-di-qos \
        --nodes=$((xP + yD)) --ntasks-per-node=1 --gres=gpu:8 --exclusive --time=04:00:00 \
        --exclude=crsuse2-m2m-v3-093,crsuse2-m2m-v3-108 \
        --output=/shared_nfs/csrikris/disagg_logs/spur-%j.out --error=/shared_nfs/csrikris/disagg_logs/spur-%j.err \
-       "$JOB_SCRIPT"
-rm -f "$JOB_SCRIPT"
+       run_xPyD_disagg.slurm
